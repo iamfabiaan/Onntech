@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ONTECH - Gestión de Repuestos y Facturación</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #printable-invoice, #printable-invoice * { visibility: visible; }
+      #printable-invoice { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans flex flex-col">
+
+  <!-- NAVBAR / HEADER -->
+  <header class="bg-slate-800 border-b border-cyan-500/30 sticky top-0 z-50 no-print shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <div class="bg-cyan-500 text-slate-950 font-black p-2 rounded-lg text-xl tracking-wider">
+          ON<span class="text-white">TECH</span>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight text-cyan-400">Servicio Técnico</h1>
+          <p class="text-xs text-slate-400">Gestión de Repuestos & Facturación</p>
+        </div>
+      </div>
+      
+      <!-- NAV TABS -->
+      <nav class="flex gap-2">
+        <button onclick="switchTab('presupuestos')" id="tab-presupuestos" class="px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 bg-cyan-600 text-white">
+          <i class="fa-solid me-1 fa-calculator"></i> Presupuestador
+        </button>
+        <button onclick="switchTab('inventario')" id="tab-inventario" class="px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 bg-slate-700 text-slate-300 hover:bg-slate-600">
+          <i class="fa-solid me-1 fa-boxes-stacked"></i> Inventario
+        </button>
+        <button onclick="switchTab('config')" id="tab-config" class="px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 bg-slate-700 text-slate-300 hover:bg-slate-600">
+          <i class="fa-solid me-1 fa-gear"></i> Mi Taller
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="max-w-7xl mx-auto p-4 flex-grow w-full no-print">
+
+    <!-- SECCIÓN 1: PRESUPUESTADOR / FACTURACIÓN -->
+    <section id="sec-presupuestos" class="space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- COLUMNA IZQUIERDA: FORMULARIO Y SELECCIÓN -->
+        <div class="lg:col-span-7 space-y-6">
+          
+          <!-- DATOS DEL CLIENTE Y EQUIPO -->
+          <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
+            <h2 class="text-cyan-400 font-bold mb-4 flex items-center gap-2">
+              <i class="fa-solid fa-user-gear"></i> Datos del Cliente y Dispositivo
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Nombre del Cliente</label>
+                <input type="text" id="client-name" placeholder="Ej: Juan Pérez" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:border-cyan-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Teléfono / WhatsApp</label>
+                <input type="text" id="client-phone" placeholder="Ej: 381 1234567" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:border-cyan-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Modelo de Celular</label>
+                <input type="text" id="client-device" placeholder="Ej: iPhone XR / Samsung A52" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:border-cyan-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Falla / Trabajo a Realizar</label>
+                <input type="text" id="client-issue" placeholder="Ej: Cambio de Módulo / Pin de Carga" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:border-cyan-500 outline-none">
+              </div>
+            </div>
+          </div>
+
+          <!-- SELECCIONAR REPUESTO DEL INVENTARIO -->
+          <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
+            <h2 class="text-cyan-400 font-bold mb-4 flex items-center gap-2">
+              <i class="fa-solid fa-screwdriver-wrench"></i> Agregar Repuesto o Servicio
+            </h2>
+            
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Seleccionar Repuesto Guardado</label>
+                <select id="select-part" onchange="loadSelectedPart()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:border-cyan-500 outline-none">
+                  <option value="">-- Seleccionar repuesto registrado --</option>
+                </select>
+              </div>
+
+              <div class="relative flex items-center my-2">
+                <div class="flex-grow border-t border-slate-700"></div>
+                <span class="flex-shrink mx-4 text-xs text-slate-500 uppercase">o ingresar manualmente</span>
+                <div class="flex-grow border-t border-slate-700"></div>
+              </div>
+
+              <!-- CAMPOS MANUALES -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="sm:col-span-3">
+                  <label class="block text-xs text-slate-400 mb-1">Nombre / Descripción del Repuesto</label>
+                  <input type="text" id="calc-name" placeholder="Ej: Módulo Samsung A51 OLED" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm outline-none focus:border-cyan-500">
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-400 mb-1">Costo ($)</label>
+                  <input type="number" id="calc-cost" oninput="autoSuggestProfit()" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm outline-none focus:border-cyan-500">
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-400 mb-1">Ganancia ($)</label>
+                  <input type="number" id="calc-profit" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm outline-none focus:border-cyan-500">
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-400 mb-1">Transporte Fijo</label>
+                  <input type="text" value="$ 7.000" disabled class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-cyan-400 font-bold">
+                </div>
+              </div>
+
+              <!-- BOTONES RÁPIDOS DE MARGEN DE GANANCIA -->
+              <div>
+                <span class="text-xs text-slate-400 block mb-1">Sugerir Ganancia Rápida:</span>
+                <div class="flex gap-2">
+                  <button type="button" onclick="applyMargin(0.30)" class="px-2.5 py-1 bg-slate-700 text-xs text-slate-300 rounded hover:bg-cyan-600 hover:text-white transition">+30%</button>
+                  <button type="button" onclick="applyMargin(0.50)" class="px-2.5 py-1 bg-slate-700 text-xs text-slate-300 rounded hover:bg-cyan-600 hover:text-white transition">+50% (Recomendado)</button>
+                  <button type="button" onclick="applyMargin(0.70)" class="px-2.5 py-1 bg-slate-700 text-xs text-slate-300 rounded hover:bg-cyan-600 hover:text-white transition">+70%</button>
+                  <button type="button" onclick="applyMargin(1.00)" class="px-2.5 py-1 bg-slate-700 text-xs text-slate-300 rounded hover:bg-cyan-600 hover:text-white transition">+100%</button>
+                </div>
+              </div>
+
+              <button onclick="addPartToQuote()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition">
+                <i class="fa-solid fa-plus"></i> Agregar al Presupuesto
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- COLUMNA DERECHA: DESGLOSE DUEÑO Y VISTA PREVIA FACTURA -->
+        <div class="lg:col-span-5 space-y-6">
+          
+          <!-- RESUMEN DUEÑO (PRIVADO) -->
+          <div class="bg-slate-800 border-2 border-emerald-500/40 rounded-xl p-5 shadow-md">
+            <div class="flex justify-between items-center mb-3">
+              <h2 class="text-emerald-400 font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved"></i> Vista del Dueño (Privado)
+              </h2>
+              <span class="text-xs bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded border border-emerald-800">Solo Tu Control</span>
+            </div>
+
+            <div class="space-y-2 text-sm border-t border-slate-700 pt-3">
+              <div class="flex justify-between text-slate-300">
+                <span>Costo Total Repuestos:</span>
+                <span id="owner-cost" class="font-mono">$0</span>
+              </div>
+              <div class="flex justify-between text-emerald-400 font-medium">
+                <span>Ganancia Neta Limpia:</span>
+                <span id="owner-profit" class="font-mono">$0</span>
+              </div>
+              <div class="flex justify-between text-cyan-400 text-xs">
+                <span>Gasto Fijo Transporte ($7.000 c/u):</span>
+                <span id="owner-transport" class="font-mono">$0</span>
+              </div>
+              <div class="flex justify-between text-lg font-bold text-white border-t border-slate-700 pt-2 mt-2">
+                <span>Cobro Total al Cliente:</span>
+                <span id="owner-total" class="font-mono text-cyan-400">$0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- LISTA DE ÍTEMS AGREGADOS -->
+          <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm space-y-3">
+            <h3 class="font-bold text-slate-200 text-sm">Ítems Seleccionados</h3>
+            <div id="quote-items-list" class="space-y-2 max-h-48 overflow-y-auto">
+              <p class="text-xs text-slate-500 italic">No hay ítems agregados aún.</p>
+            </div>
+            
+            <div class="pt-3 border-t border-slate-700 flex gap-2">
+              <button onclick="window.print()" class="flex-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition">
+                <i class="fa-solid fa-print"></i> Imprimir / Guardar PDF
+              </button>
+              <button onclick="clearQuote()" class="bg-slate-700 hover:bg-red-600 text-slate-300 hover:text-white px-3 py-2.5 rounded-lg text-sm transition">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECCIÓN 2: INVENTARIO DE REPUESTOS -->
+    <section id="sec-inventario" class="hidden space-y-6">
+      
+      <!-- CONTROLES Y AGREGAR -->
+      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
+        <h2 class="text-cyan-400 font-bold mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-plus-circle"></i> Nuevo Repuesto al Inventario
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Marca</label>
+            <select id="inv-brand" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm outline-none focus:border-cyan-500">
+              <option value="Apple">Apple (iPhone)</option>
+              <option value="Samsung">Samsung</option>
+              <option value="Motorola">Motorola</option>
+              <option value="Xiaomi">Xiaomi</option>
+              <option value="Otra">Otra</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Nombre Repuesto / Modelo</label>
+            <input type="text" id="inv-name" placeholder="Ej: Módulo iPhone XR Incell" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm outline-none focus:border-cyan-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Costo ($)</label>
+            <input type="number" id="inv-cost" oninput="autoSuggestInvProfit()" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm outline-none focus:border-cyan-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Ganancia Sugerida ($)</label>
+            <input type="number" id="inv-profit" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm outline-none focus:border-cyan-500">
+          </div>
+          <div class="flex items-end">
+            <button onclick="savePartToInventory()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg text-sm transition">
+              Guardar Repuesto
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLA DE INVENTARIO CON BUSCADOR -->
+      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
+          <h2 class="text-cyan-400 font-bold flex items-center gap-2">
+            <i class="fa-solid fa-boxes-stacked"></i> Repuestos Registrados
+          </h2>
+          <input type="text" id="search-inv" oninput="renderInventoryTable()" placeholder="Buscar por modelo o marca..." class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-cyan-500 w-full sm:w-64">
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-300">
+            <thead class="bg-slate-900/80 text-xs uppercase text-slate-400 border-b border-slate-700">
+              <tr>
+                <th class="p-3">Marca</th>
+                <th class="p-3">Repuesto</th>
+                <th class="p-3">Costo</th>
+                <th class="p-3">Ganancia</th>
+                <th class="p-3 text-cyan-400">Transporte</th>
+                <th class="p-3 text-white font-bold">Precio Cliente</th>
+                <th class="p-3 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-table-body" class="divide-y divide-slate-700/50">
+              <!-- Filas dinámicas -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- SECCIÓN 3: CONFIGURACIÓN Y TALLER -->
+    <section id="sec-config" class="hidden space-y-6 max-w-2xl mx-auto">
+      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-4">
+        <h2 class="text-cyan-400 font-bold flex items-center gap-2">
+          <i class="fa-solid fa-store"></i> Configuración del Local - ONTECH
+        </h2>
+        
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Dirección del Local</label>
+          <input type="text" id="cfg-address" value="San Miguel de Tucumán" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Teléfono de Contacto / WhatsApp</label>
+          <input type="text" id="cfg-phone" value="+54 381 0000000" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Términos de Garantía (Impresos en factura)</label>
+          <textarea id="cfg-warranty" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs outline-none text-slate-300">Garantía válida por 30 días únicamente por fallas de fábrica. No cubre golpes, humedad, roturas de display o manipulación por terceros.</textarea>
+        </div>
+
+        <button onclick="saveConfig()" class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm">
+          Guardar Cambios
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- PLANTILLA DE FACTURA IMPRESA PARA EL CLIENTE (MUESTRA SOLO PRECIO FINAL CONSOLIDADO) -->
+  <div id="printable-invoice" class="hidden print:block bg-white text-slate-900 p-8 max-w-3xl mx-auto min-h-screen font-sans">
+    
+    <!-- ENCABEZADO FACTURA -->
+    <div class="flex justify-between items-start border-b-2 border-slate-900 pb-4 mb-6">
+      <div>
+        <h1 class="text-3xl font-black tracking-tight text-slate-900">ONTECH</h1>
+        <p class="text-xs font-semibold text-slate-600 uppercase tracking-widest">Servicio Técnico & Repuestos</p>
+        <p id="inv-print-address" class="text-xs text-slate-500 mt-1">San Miguel de Tucumán</p>
+        <p id="inv-print-phone" class="text-xs text-slate-500">Tel: +54 381 0000000</p>
+      </div>
+      <div class="text-right">
+        <span class="inline-block bg-slate-900 text-white text-xs font-bold px-3 py-1 rounded">PRESUPUESTO / COMPROBANTE</span>
+        <p class="text-xs text-slate-500 mt-2">Fecha: <span id="print-date"></span></p>
+      </div>
+    </div>
+
+    <!-- DATOS CLIENTE IMPRESION -->
+    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6 grid grid-cols-2 gap-4 text-xs">
+      <div>
+        <p class="text-slate-400 uppercase font-bold text-[10px]">Cliente</p>
+        <p id="print-client-name" class="font-bold text-slate-800 text-sm">-</p>
+        <p id="print-client-phone" class="text-slate-600">-</p>
+      </div>
+      <div>
+        <p class="text-slate-400 uppercase font-bold text-[10px]">Equipo & Trabajo</p>
+        <p id="print-client-device" class="font-bold text-slate-800 text-sm">-</p>
+        <p id="print-client-issue" class="text-slate-600">-</p>
+      </div>
+    </div>
+
+    <!-- TABLA DE DETALLE (SOLO MUESTRA EL PRECIO FINAL AL CLIENTE) -->
+    <table class="w-full text-left text-xs mb-8">
+      <thead>
+        <tr class="border-b border-slate-300 text-slate-500 uppercase font-semibold">
+          <th class="py-2">Descripción del Servicio / Repuesto</th>
+          <th class="py-2 text-right">Precio Final</th>
+        </tr>
+      </thead>
+      <tbody id="print-items-body" class="divide-y divide-slate-100">
+        <!-- Ítems agregados -->
+      </tbody>
+    </table>
+
+    <!-- TOTAL FINAL -->
+    <div class="flex justify-end border-t-2 border-slate-900 pt-4 mb-8">
+      <div class="text-right">
+        <span class="text-xs text-slate-500 uppercase font-bold block">Total a Pagar</span>
+        <span id="print-total" class="text-2xl font-black text-slate-900">$0</span>
+      </div>
+    </div>
+
+    <!-- GARANTÍA -->
+    <div class="border-t border-slate-200 pt-4 text-[10px] text-slate-500 space-y-1">
+      <p class="font-bold uppercase text-slate-700">Términos de Garantía:</p>
+      <p id="print-warranty-text"></p>
+    </div>
+
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    const TRANSPORT_FEE = 7000; // $7.000 Fijo de transporte
+
+    // Estado local
+    let inventory = JSON.parse(localStorage.getItem('ontech_inventory')) || [
+      { id: 1, brand: 'Apple', name: 'Módulo iPhone XR Incell', cost: 18000, profit: 9000 },
+      { id: 2, brand: 'Samsung', name: 'Módulo Samsung A51 OLED', cost: 22000, profit: 11000 }
+    ];
+
+    let currentQuote = [];
+    let config = JSON.parse(localStorage.getItem('ontech_config')) || {
+      address: 'San Miguel de Tucumán',
+      phone: '+54 381 0000000',
+      warranty: 'Garantía válida por 30 días únicamente por fallas de fábrica. No cubre golpes, humedad, roturas de display o manipulación por terceros.'
+    };
+
+    // Inicializar app
+    document.addEventListener('DOMContentLoaded', () => {
+      renderInventorySelect();
+      renderInventoryTable();
+      updatePrintableDate();
+      loadConfigUI();
+    });
+
+    // Formatear pesos
+    function formatARS(val) {
+      return '$ ' + Number(val).toLocaleString('es-AR');
+    }
+
+    // Pestañas
+    function switchTab(tab) {
+      ['presupuestos', 'inventario', 'config'].forEach(t => {
+        document.getElementById(`sec-${t}`).classList.add('hidden');
+        document.getElementById(`tab-${t}`).className = 'px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 bg-slate-700 text-slate-300 hover:bg-slate-600';
+      });
+      document.getElementById(`sec-${tab}`).classList.remove('hidden');
+      document.getElementById(`tab-${tab}`).className = 'px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 bg-cyan-600 text-white';
+    }
+
+    // Sugerencia automática de ganancia (50%)
+    function autoSuggestProfit() {
+      const cost = parseFloat(document.getElementById('calc-cost').value) || 0;
+      if (cost > 0) {
+        document.getElementById('calc-profit').value = Math.round(cost * 0.5);
+      } else {
+        document.getElementById('calc-profit').value = '';
+      }
+    }
+
+    function autoSuggestInvProfit() {
+      const cost = parseFloat(document.getElementById('inv-cost').value) || 0;
+      if (cost > 0) {
+        document.getElementById('inv-profit').value = Math.round(cost * 0.5);
+      } else {
+        document.getElementById('inv-profit').value = '';
+      }
+    }
+
+    function applyMargin(percentage) {
+      const cost = parseFloat(document.getElementById('calc-cost').value) || 0;
+      if (cost > 0) {
+        document.getElementById('calc-profit').value = Math.round(cost * percentage);
+      }
+    }
+
+    // Agregar al presupuesto
+    function addPartToQuote() {
+      const name = document.getElementById('calc-name').value.trim();
+      const cost = parseFloat(document.getElementById('calc-cost').value) || 0;
+      const profit = parseFloat(document.getElementById('calc-profit').value) || 0;
+
+      if (!name) {
+        alert('Por favor ingresa un nombre o descripción para el repuesto/trabajo.');
+        return;
+      }
+
+      const totalItem = cost + profit + TRANSPORT_FEE;
+
+      currentQuote.push({ name, cost, profit, transport: TRANSPORT_FEE, total: totalItem });
+      
+      // Limpiar inputs
+      document.getElementById('calc-name').value = '';
+      document.getElementById('calc-cost').value = '';
+      document.getElementById('calc-profit').value = '';
+      document.getElementById('select-part').value = '';
+
+      updateQuoteUI();
+    }
+
+    function removeQuoteItem(index) {
+      currentQuote.splice(index, 1);
+      updateQuoteUI();
+    }
+
+    function clearQuote() {
+      currentQuote = [];
+      updateQuoteUI();
+    }
+
+    // Actualizar vista del dueño y la factura
+    function updateQuoteUI() {
+      const listEl = document.getElementById('quote-items-list');
+      const printTableEl = document.getElementById('print-items-body');
+
+      let totalCost = 0;
+      let totalProfit = 0;
+      let totalTransport = 0;
+      let grandTotal = 0;
+
+      listEl.innerHTML = '';
+      printTableEl.innerHTML = '';
+
+      if (currentQuote.length === 0) {
+        listEl.innerHTML = '<p class="text-xs text-slate-500 italic">No hay ítems agregados aún.</p>';
+      }
+
+      currentQuote.forEach((item, idx) => {
+        totalCost += item.cost;
+        totalProfit += item.profit;
+        totalTransport += item.transport;
+        grandTotal += item.total;
+
+        // Render lista interfaz
+        const div = document.createElement('div');
+        div.className = 'flex justify-between items-center bg-slate-900 p-2 rounded text-xs border border-slate-700/50';
+        div.innerHTML = `
+          <div>
+            <p class="font-bold text-slate-200">${item.name}</p>
+            <p class="text-[10px] text-slate-400">Costo: ${formatARS(item.cost)} | Ganancia: ${formatARS(item.profit)} | Flete: ${formatARS(item.transport)}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-cyan-400">${formatARS(item.total)}</span>
+            <button onclick="removeQuoteItem(${idx})" class="text-red-400 hover:text-red-300 p-1"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        `;
+        listEl.appendChild(div);
+
+        // Render tabla cliente (IMPRESIÓN: Oculta costos e integra el total)
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="py-2.5 text-slate-800 font-medium">${item.name}</td>
+          <td class="py-2.5 text-right font-bold text-slate-900">${formatARS(item.total)}</td>
+        `;
+        printTableEl.appendChild(tr);
+      });
+
+      // Actualizar vista del dueño
+      document.getElementById('owner-cost').textContent = formatARS(totalCost);
+      document.getElementById('owner-profit').textContent = formatARS(totalProfit);
+      document.getElementById('owner-transport').textContent = formatARS(totalTransport);
+      document.getElementById('owner-total').textContent = formatARS(grandTotal);
+
+      // Actualizar impresión
+      document.getElementById('print-total').textContent = formatARS(grandTotal);
+      document.getElementById('print-client-name').textContent = document.getElementById('client-name').value || 'Cliente Particular';
+      document.getElementById('print-client-phone').textContent = document.getElementById('client-phone').value || '-';
+      document.getElementById('print-client-device').textContent = document.getElementById('client-device').value || '-';
+      document.getElementById('print-client-issue').textContent = document.getElementById('client-issue').value || '-';
+    }
+
+    // Cargar repuesto seleccionado
+    function loadSelectedPart() {
+      const id = document.getElementById('select-part').value;
+      if (!id) return;
+      const part = inventory.find(p => p.id == id);
+      if (part) {
+        document.getElementById('calc-name').value = `${part.brand} - ${part.name}`;
+        document.getElementById('calc-cost').value = part.cost;
+        document.getElementById('calc-profit').value = part.profit;
+      }
+    }
+
+    // INVENTARIO
+    function savePartToInventory() {
+      const brand = document.getElementById('inv-brand').value;
+      const name = document.getElementById('inv-name').value.trim();
+      const cost = parseFloat(document.getElementById('inv-cost').value) || 0;
+      const profit = parseFloat(document.getElementById('inv-profit').value) || 0;
+
+      if (!name) {
+        alert('Por favor escribe el nombre del repuesto.');
+        return;
+      }
+
+      const newItem = { id: Date.now(), brand, name, cost, profit };
+      inventory.push(newItem);
+      localStorage.setItem('ontech_inventory', JSON.stringify(inventory));
+
+      // Limpiar inputs
+      document.getElementById('inv-name').value = '';
+      document.getElementById('inv-cost').value = '';
+      document.getElementById('inv-profit').value = '';
+
+      renderInventorySelect();
+      renderInventoryTable();
+    }
+
+    function deleteInventoryPart(id) {
+      if (confirm('¿Deseas eliminar este repuesto del inventario?')) {
+        inventory = inventory.filter(p => p.id != id);
+        localStorage.setItem('ontech_inventory', JSON.stringify(inventory));
+        renderInventorySelect();
+        renderInventoryTable();
+      }
+    }
+
+    function renderInventorySelect() {
+      const select = document.getElementById('select-part');
+      select.innerHTML = '<option value="">-- Seleccionar repuesto registrado --</option>';
+      inventory.forEach(p => {
+        const total = p.cost + p.profit + TRANSPORT_FEE;
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `[${p.brand}] ${p.name} -> Final: ${formatARS(total)}`;
+        select.appendChild(opt);
+      });
+    }
+
+    function renderInventoryTable() {
+      const tbody = document.getElementById('inventory-table-body');
+      const search = document.getElementById('search-inv').value.toLowerCase();
+      tbody.innerHTML = '';
+
+      const filtered = inventory.filter(p => p.name.toLowerCase().includes(search) || p.brand.toLowerCase().includes(search));
+
+      filtered.forEach(p => {
+        const total = p.cost + p.profit + TRANSPORT_FEE;
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-700/30 transition';
+        tr.innerHTML = `
+          <td class="p-3"><span class="bg-slate-700 text-slate-200 text-xs px-2 py-0.5 rounded">${p.brand}</span></td>
+          <td class="p-3 font-medium text-white">${p.name}</td>
+          <td class="p-3 font-mono">${formatARS(p.cost)}</td>
+          <td class="p-3 font-mono text-emerald-400">+${formatARS(p.profit)}</td>
+          <td class="p-3 font-mono text-cyan-400">${formatARS(TRANSPORT_FEE)}</td>
+          <td class="p-3 font-mono font-bold text-white">${formatARS(total)}</td>
+          <td class="p-3 text-center">
+            <button onclick="deleteInventoryPart(${p.id})" class="text-red-400 hover:text-red-300 px-2 py-1"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // CONFIGURACIÓN
+    function saveConfig() {
+      config.address = document.getElementById('cfg-address').value;
+      config.phone = document.getElementById('cfg-phone').value;
+      config.warranty = document.getElementById('cfg-warranty').value;
+
+      localStorage.setItem('ontech_config', JSON.stringify(config));
+      loadConfigUI();
+      alert('Configuración guardada correctamente.');
+    }
+
+    function loadConfigUI() {
+      document.getElementById('cfg-address').value = config.address;
+      document.getElementById('cfg-phone').value = config.phone;
+      document.getElementById('cfg-warranty').value = config.warranty;
+
+      document.getElementById('inv-print-address').textContent = config.address;
+      document.getElementById('inv-print-phone').textContent = 'Tel: ' + config.phone;
+      document.getElementById('print-warranty-text').textContent = config.warranty;
+    }
+
+    function updatePrintableDate() {
+      const now = new Date();
+      document.getElementById('print-date').textContent = now.toLocaleDateString('es-AR');
+    }
+  </script>
+</body>
+</html>
